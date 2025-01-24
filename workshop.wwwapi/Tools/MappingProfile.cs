@@ -1,5 +1,7 @@
 using System;
 using AutoMapper;
+using workshop.wwwapi.Models;
+using workshop.wwwapi.DTO;
 
 namespace workshop.wwwapi.Tools;
 
@@ -7,8 +9,9 @@ public class MappingProfile : Profile
 {
     public MappingProfile()
     {
-        CreateMap<Models.Patient, DTO.PatientDTO>();
-        CreateMap<Models.Appointment, DTO.AppointmentDTO>();
-        CreateMap<Models.Doctor, DTO.DoctorDTO>();
+        CreateMap<Patient, PatientDTO>();
+        CreateMap<Appointment, AppointmentDTO>();
+        CreateMap<Doctor, DoctorDTO>();
+        CreateMap<PatientPost, Patient>();
     }
 }
