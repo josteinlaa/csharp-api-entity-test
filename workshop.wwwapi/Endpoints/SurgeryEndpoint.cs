@@ -16,22 +16,107 @@ namespace workshop.wwwapi.Endpoints
             surgeryGroup.MapGet("/patients", GetPatients);
             surgeryGroup.MapGet("patients/{id}", GetPatientById);
             surgeryGroup.MapPost("/patients", CreatePatient);
-            surgeryGroup.MapPut("patients/{id}", UpdatePatient);                
 
             surgeryGroup.MapGet("/doctors", GetDoctors);
+            surgeryGroup.MapGet("/doctors/{id}", GetDoctorById);
+            surgeryGroup.MapPost("/doctors", CreateDoctor);
 
+            surgeryGroup.MapGet("/appointments", GetAllAppointments);
+            surgeryGroup.MapGet("/appointments/doctor/{id}", GetAppointmentsByDoctor);
+            surgeryGroup.MapGet("/appointments/patient/{id}", GetAppointmentsByPatient);
+            surgeryGroup.MapPost("/appointments", CreateAppointment);
 
-            surgeryGroup.MapGet("/appointmentsbydoctor/{id}", GetAppointmentsByDoctor);
         }
 
-        private static string baseUrl(HttpContext context) {
-            return $"{context.Request.Scheme}://{context.Request.Host}";
-        }
-
-        private static async Task UpdatePatient(HttpContext context)
+        private static async Task<IResult> CreateAppointment(HttpContext context, IRepository<Appointment> repository, IMapper mapper, AppointmentPost appointmentPost)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var appointment = mapper.Map<Appointment>(appointmentPost);
+                appointment = await repository.Create(appointment);
+
+                var appointmentDto = mapper.Map<AppointmentDTO>(appointment);
+                return Results.Created($"{baseUrl(context)}/surgery/appointments/{appointment.AppointmentDate}", appointmentDto);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
         }
+
+        private static async Task<IResult> GetAppointmentsByPatient(HttpContext context, int id, IRepository<Patient> repository, IMapper mapper)
+        {
+            var results = await repository.GetWithIncludes(p => p.Appointments);
+            var response = mapper.Map<IEnumerable<PatientDTO>>(results);
+
+            return TypedResults.Ok(response);
+        }
+
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public static async Task<IResult> GetAppointmentsByDoctor(IRepository<Doctor> repository, int id, IMapper mapper)
+        {
+            var results = await repository.GetWithIncludes(p => p.Appointments);
+            var response = mapper.Map<IEnumerable<DoctorDTO>>(results);
+
+            return TypedResults.Ok(response);
+        }
+
+        private static async Task<IResult> GetAllAppointments(HttpContext context, IRepository<Appointment> repository, IMapper mapper)
+        {
+            var results = await repository.GetAll();
+            var response = mapper.Map<IEnumerable<AppointmentDTO>>(results);
+
+            return TypedResults.Ok(response);
+        }
+
+
+        
+
+        private static async Task<IResult> CreateDoctor(HttpContext context, IRepository<Doctor> repository, IMapper mapper, DoctorPost doctorPost)
+        {
+            try
+            {
+                Doctor doctor = mapper.Map<Doctor>(doctorPost);
+                doctor = await repository.Create(doctor);
+
+                var doctorDto = mapper.Map<DoctorDTO>(doctor);
+                return Results.Created($"{baseUrl(context)}/surgery/doctors/{doctor.Id}", doctorDto);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        }
+
+        private static async Task<IResult> GetDoctorById(HttpContext context, IRepository<Doctor> repository, IMapper mapper, int id)
+        {
+            try
+            {
+                var doctor = await repository.GetById(id);
+                if (doctor == null)
+                {
+                    return TypedResults.NotFound();
+                }
+
+                var patientDto = mapper.Map<DoctorDTO>(doctor);
+                return TypedResults.Ok(doctor);
+            }
+            catch (Exception ex)
+            {     
+                return Results.Problem(ex.Message);
+            }
+        }
+
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public static async Task<IResult> GetDoctors(IRepository<Doctor> repository, IMapper mapper)
+        {
+            var results = await repository.GetAll();
+            var response = mapper.Map<IEnumerable<DoctorDTO>>(results);
+
+            return TypedResults.Ok(response);
+        }
+
+
 
         private static async Task<IResult> CreatePatient(IRepository<Patient> repository, IMapper mapper, PatientPost patientPost, HttpContext context)
         {
@@ -78,22 +163,11 @@ namespace workshop.wwwapi.Endpoints
             return TypedResults.Ok(response);
         }
 
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public static async Task<IResult> GetDoctors(IRepository<Doctor> repository, IMapper mapper)
-        {
-            var results = await repository.GetAll();
-            var response = mapper.Map<IEnumerable<DoctorDTO>>(results);
 
-            return TypedResults.Ok(response);
+        
+        private static string baseUrl(HttpContext context) {
+            return $"{context.Request.Scheme}://{context.Request.Host}";
         }
 
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public static async Task<IResult> GetAppointmentsByDoctor(IRepository<Doctor> repository, int id, IMapper mapper)
-        {
-            var results = await repository.GetWithIncludes(p => p.Appointments);
-            var response = mapper.Map<IEnumerable<DoctorDTO>>(results);
-
-            return TypedResults.Ok(response);
-        }
     }
 }
